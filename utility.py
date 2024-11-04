@@ -51,14 +51,19 @@ def findNextFrequencyFromPreset(preset, frequency, direction):
     return nextFrequency
 
 def getRecievedOfRange(recievedStr, range):
-    recievedFromStr = getRecievedFromStr(recievedStr)
     recievedOfRange = dict()
-    if range == '1.2':
-        recievedOfRange['frequency'] = recievedFromStr[1][0]
-        recievedOfRange['rssi'] = recievedFromStr[1][1]
-    if range == '5.8':
-        recievedOfRange['frequency'] = recievedFromStr[2][0]
-        recievedOfRange['rssi'] = recievedFromStr[2][1]
+    if range == '1.0':
+        recievedFromStr = getRecievedFromStrOld(recievedStr)
+        recievedOfRange['frequency'] = ''
+        recievedOfRange['rssi'] = recievedFromStr[0]
+    else:
+        recievedFromStr = getRecievedFromStr(recievedStr)
+        if range == '1.2':
+            recievedOfRange['frequency'] = recievedFromStr[1][0]
+            recievedOfRange['rssi'] = recievedFromStr[1][1]
+        if range == '5.8':
+            recievedOfRange['frequency'] = recievedFromStr[2][0]
+            recievedOfRange['rssi'] = recievedFromStr[2][1]
     return recievedOfRange
 
 def getRecievedFromStr(recievedStr):
@@ -77,6 +82,17 @@ def getRecievedFromStr(recievedStr):
         if len(recievedList58) == 2:
             recievedList58[1].replace(']', '')
             recievedList[2] = recievedList58
+    else:
+        recievedList = ['ERORR', '0', '0']
+    return recievedList
+
+def getRecievedFromStrOld(recievedStr):
+    recievedList = recievedStr.split('\\r\\n')
+    if len(recievedList) >= 1:
+        recievedList12 = recievedList[0].split(' ')
+        if len(recievedList12) == 2:
+            #recievedList12[1].replace(']', '')
+            recievedList[0] = recievedList12[1]
     else:
         recievedList = ['ERORR', '0', '0']
     return recievedList
