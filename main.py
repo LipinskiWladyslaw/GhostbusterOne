@@ -19,7 +19,8 @@ from PyQt5 import QtWidgets as qtw
 from PyQt5 import QtCore as qtc
 from PyQt5 import QtGui as qtg
 
-from utility import findPresetByName, findNextFrequencyFromPreset, getRecievedFromStr, getRecievedOfRange
+from utility import findPresetByName, findNextFrequencyFromPreset, getRecievedFromStr, getRecievedOfRange, \
+    findNextFrequencyByStep
 
 
 class IteratorMode(QMetaEnum):
@@ -127,6 +128,9 @@ class MainForm(qtw.QWidget):
         self.stationWidget.playStopPushButton.clicked.connect(self.playStop)
         self.stationWidget.openComPortButton.clicked.connect(self.openSerialPort)
         self.stationWidget.closeComPortButton.clicked.connect(self.closeSerialPort)
+        self.stationWidget.channelRadioButton.clicked.connect(self.checkRadioButton)
+        self.stationWidget.periodRadioButton.clicked.connect(self.checkRadioButton)
+        self.stationWidget.periodComboBox.currentIndexChanged.connect(self.periodComboBoxChanged)
 
     def nextFrequency(self):
         self.getFrequencyFromPreset(self.frequency, 1)
@@ -138,11 +142,23 @@ class MainForm(qtw.QWidget):
         frequency = self.stationWidget.frequencyComboBox.currentText()
         self.getFrequencyFromPreset(frequency, 0)
 
-    def getFrequencyFromPreset(self, frequency, direction):
-        self.frequency = findNextFrequencyFromPreset(self.presetFrequencies, frequency, direction)
+    def periodComboBoxChanged(self):
+        period = self.stationWidget.periodComboBox.currentText()
+        self.frequencyStep = period
 
+    def getFrequencyFromPreset(self, frequency, direction):
+        if self.stationWidget.channelRadioButton.isChecked():
+            self.frequency = findNextFrequencyFromPreset(self.presetFrequencies, frequency, direction)
+        else:
+            self.frequency = findNextFrequencyByStep(frequency, self.stationWidget.periodComboBox.currentText(), direction, self.currentPreset)
         self.syncUI()
         self.sendDataToSerial()
+
+    def checkRadioButton(self):
+        if self.stationWidget.channelRadioButton.isChecked():
+            self.iteratorMode = IteratorMode.WithinPreset
+        else:
+            self.iteratorMode = IteratorMode.ByStep
 
     def updateTimer(self):
         if self.timerIsStarted:
@@ -177,7 +193,7 @@ class MainForm(qtw.QWidget):
         index = self.stationWidget.comPortComboBox.findText(self.config['comPort'])
         if index > -1:
             self.stationWidget.comPortComboBox.setCurrentIndex(index)
-            self.openSerialPort()
+        self.openSerialPort()
 
     def openSerialPort(self):
         if self.serial.isOpen():
@@ -209,9 +225,6 @@ class MainForm(qtw.QWidget):
                 #print(data)
 
     def getDataFromSerial(self):
-        global rxstring, rssi, dataConfig
-
-        indexFirst = -1
         rx = self.serial.readAll()
         try:
             # rxs = str(rx, 'utf-8')
@@ -221,13 +234,7 @@ class MainForm(qtw.QWidget):
             #print(f'frequency - {recieved['frequency']}; rssi - {recieved['rssi']}')
             self.stationWidget.rssiLCD.display(recieved['rssi'])
         except:
-            indexFirst = -1
-            rxs = ''
-            rxstring = ''
-            #print('rx is uncorrect ')
-        if self.serial.readBufferSize() > 0:
-            self.getDataFromSerial()
-
+            self.stationWidget.rssiLCD.display('error')
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     app = qtw.QApplication([])

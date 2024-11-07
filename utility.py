@@ -50,6 +50,19 @@ def findNextFrequencyFromPreset(preset, frequency, direction):
 
     return nextFrequency
 
+def findNextFrequencyByStep(frequency, step, direction, currentPreset):
+    intfrequency = int(frequency)
+    intstep = int(step)
+    nextFrequency = intfrequency + intstep * direction
+    minFrequency = int(currentPreset['minFrequency'])
+    maxFrequency = int(currentPreset['maxFrequency'])
+    if nextFrequency < minFrequency:
+        nextFrequency = maxFrequency
+    if nextFrequency > maxFrequency:
+        nextFrequency = minFrequency
+
+    return str(nextFrequency)
+
 def getRecievedOfRange(recievedStr, range):
     recievedOfRange = dict()
     if range == '1.0':
