@@ -1,0 +1,6 @@
+{
+    "stationName": "Test",
+    "location": "Test",
+    "frequencyRange": "1.0",
+    "comPort": "COM11"
+}

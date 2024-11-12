@@ -109,3 +109,36 @@ def getRecievedFromStrOld(recievedStr):
     else:
         recievedList = ['ERORR', '0', '0']
     return recievedList
+
+def getRecievedFromSerial(recievedStr):
+    recievedFromAntennas = dict()
+    recievedFromAntennas['rssi1'] = 0
+    recievedFromAntennas['rssi2'] = 0
+    recievedFromAntennas['rssi3'] = 0
+
+    recievedList = recievedStr.split('&')
+
+    if len(recievedList) > 1:
+        recievedStr1 = recievedList[1]
+        recievedStr2 = recievedList[2]
+
+    fillrecievedFromAntennas(recievedFromAntennas, recievedStr1)
+    fillrecievedFromAntennas(recievedFromAntennas, recievedStr2)
+
+    return recievedFromAntennas
+
+def fillrecievedFromAntennas(recievedFromAntennas, recievedStrIn):
+    if recievedStrIn.find('][') > 0:
+        #RSSI [1040 1][5865 0]
+        recievedStr = recievedStrIn[7:]
+        recievedList = recievedStr.split('][')
+        recievedStr12 = recievedList[0].split(" ")[1]
+        recievedStr58 = recievedList[1].replace("]"," ")
+        recievedStr58 = recievedStr58.split(" ")[1]
+        recievedFromAntennas['rssi1'] = recievedStr58
+        recievedFromAntennas['rssi2'] = recievedStr12
+    elif recievedStrIn.find('\\r\\n') > 0:
+        #RSSI 928
+        recievedStr12 = recievedStrIn.replace("\\r\\n", " ")
+        recievedStr12 = recievedStr12.split(" ")[1]
+        recievedFromAntennas['rssi3'] = recievedStr12

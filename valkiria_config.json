@@ -1,6 +1,6 @@
 {
-    "stationName": 464,
-    "location": "Test",
+    "stationName": "main",
+    "location": "main",
     "frequencyRange": "1.0",
-    "comPort": "COM11"
+    "comPort": "COM20"
 }
