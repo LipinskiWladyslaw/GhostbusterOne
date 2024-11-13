@@ -1,4 +1,4 @@
-from PySide6 import QtCore
+from PyQt5 import QtCore
 
 def loadQssFile(file_path):
     """Loads the contents of a styles.qcc file into a string variable.

@@ -1,1 +1,1 @@
-pip install PySide6 pika
+pip install PyQt5

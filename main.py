@@ -32,7 +32,7 @@ class MainForm(qtw.QWidget):
 
         self.iteratorDelayMinimum = 1
         self.iteratorDelayMaximum = 10
-        self.defaultIteratorDelay = 3
+        self.defaultIteratorDelay = 5
         self.defaultIteratorMode = IteratorMode.WithinPreset
 
         self.stationConfig = None
