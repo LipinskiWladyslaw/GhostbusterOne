@@ -1,17 +1,7 @@
 # This is a sample Python script.
 import json
-from itertools import filterfalse
-
-#from PyQt5.uic.Compiler.qtproxies import QtWidgets, QtCore
-#from PySide6 import QtGui
-from PySide6.QtCore import QMetaEnum
-#from PySide6.QtGui import QPixmap, QIcon, QStandardItemModel, QStandardItem
-#from PySide6.QtSerialPort import QSerialPortInfo, QSerialPort
 from PyQt5.QtSerialPort import QSerialPort, QSerialPortInfo
-from PyQt5.QtCore import QIODevice
-
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+from PyQt5.QtCore import QIODevice, QMetaEnum
 
 from station_widget import Ui_formMain
 
@@ -19,14 +9,16 @@ from PyQt5 import QtWidgets as qtw
 from PyQt5 import QtCore as qtc
 from PyQt5 import QtGui as qtg
 
-from utility import findPresetByName, findNextFrequencyFromPreset, getRecievedFromStr, getRecievedOfRange
-
+from utility import findPresetByName, findNextFrequencyFromPreset, getRecievedFromStr, getRecievedOfRange, \
+    verificationDataFromStr, findNextFrequencyByStep
 
 class IteratorMode(QMetaEnum):
     WithinPreset = 'Within Preset'
     ByStep = 'By Step'
 
 class MainForm(qtw.QWidget):
+
+    updateUI = qtc.pyqtSignal()
 
     def __init__(self, *args, **kwargs):
 
@@ -63,6 +55,8 @@ class MainForm(qtw.QWidget):
 
         self.currentPreset = findPresetByName(self.config["frequencyRange"], self.config, self.presets)
         self.stationWidget.frequencyComboBox.addItems(self.currentPreset["presetFrequencies"])
+
+        self.stationWidget.rxs = ''
         self.presetFrequencies = self.currentPreset["presetFrequencies"]
 
         self.stationName = self.config["stationName"]
@@ -102,53 +96,73 @@ class MainForm(qtw.QWidget):
         self.updateComport()
 
     def syncUI(self):
+        self.stationWidget.delaySpinBox.setValue(self.iteratorDelay)
+        index = self.stationWidget.periodComboBox.findText(str(self.frequencyStep))
+        self.stationWidget.periodComboBox.setCurrentIndex(index)
+
+        #-------------------------------------------------------------------------
         if self.iteratorMode == IteratorMode.WithinPreset:
             self.stationWidget.channelRadioButton.setChecked(True)
         elif self.iteratorMode == IteratorMode.ByStep:
             self.stationWidget.periodRadioButton.setChecked(True)
-
-        self.stationWidget.delaySpinBox.setValue(self.iteratorDelay)
-
-        index = self.stationWidget.frequencyComboBox.findText(self.frequency)
-        #self.stationWidget.frequencyComboBox.setCurrentIndex(0)
-
-        index = self.stationWidget.periodComboBox.findText(str(self.frequencyStep))
-        self.stationWidget.periodComboBox.setCurrentIndex(index)
-
         self.stationWidget.frequencyLCD.display(self.frequency)
 
     def setupHandlers(self):
         self.stationWidget.updateListComPort.clicked.connect(self.updateComport)
+        self.stationWidget.periodComboBox.currentIndexChanged.connect(self.periodComboBoxChanged)
+        self.stationWidget.openComPortButton.clicked.connect(self.openSerialPort)
+        self.stationWidget.closeComPortButton.clicked.connect(self.closeSerialPort)
+        self.stationWidget.saveComPortButton.clicked.connect(self.saveSerialPort)
         #self.stationWidget.openComPortButton.clicked.connect(self.openComPort)
 
         self.stationWidget.upPushButton.clicked.connect(self.nextFrequency)
         self.stationWidget.downPushButton.clicked.connect(self.prevFrequency)
         self.stationWidget.frequencyComboBox.currentIndexChanged.connect(self.frequencyComboBoxChanged)
         self.stationWidget.playStopPushButton.clicked.connect(self.playStop)
-        self.stationWidget.openComPortButton.clicked.connect(self.openSerialPort)
-        self.stationWidget.closeComPortButton.clicked.connect(self.closeSerialPort)
+        self.stationWidget.channelRadioButton.clicked.connect(self.checkRadioButton)
+        self.stationWidget.periodRadioButton.clicked.connect(self.checkRadioButton)
+
+        self.updateUI.connect(self.syncUI)
 
     def nextFrequency(self):
-        self.getFrequencyFromPreset(self.frequency, 1)
+        self.nextFrequencyGeneral()
+        self.sendDataToSerial()
+        #self.getFrequencyFromPreset(self.frequency, 1, True)
+
+    def nextFrequencyGeneral(self):
+        self.getFrequencyFromPreset(self.frequency, 1, True)
 
     def prevFrequency(self):
-        self.getFrequencyFromPreset(self.frequency, -1)
+        self.getFrequencyFromPreset(self.frequency, -1, True)
+        self.sendDataToSerial()
 
     def frequencyComboBoxChanged(self):
         frequency = self.stationWidget.frequencyComboBox.currentText()
-        self.getFrequencyFromPreset(frequency, 0)
-
-    def getFrequencyFromPreset(self, frequency, direction):
-        self.frequency = findNextFrequencyFromPreset(self.presetFrequencies, frequency, direction)
-
-        self.syncUI()
+        self.getFrequencyFromPreset(frequency, 0, True)
         self.sendDataToSerial()
 
-    def updateTimer(self):
-        if self.timerIsStarted:
-            self.timer.start(self.stationWidget.delaySpinBox.value()*1000)
+    def getFrequencyFromPreset(self, frequency, direction, updateUi):
+        if self.stationWidget.channelRadioButton.isChecked():
+            self.frequency = findNextFrequencyFromPreset(self.presetFrequencies, frequency, direction)
         else:
-            self.timer.stop()
+            self.frequency = findNextFrequencyByStep(frequency, self.stationWidget.periodComboBox.currentText(),
+                                                     direction, self.currentPreset)
+        if updateUi:
+            self.syncUI()
+        #self.sendDataToSerial()
+
+    def checkRadioButton(self):
+        if self.stationWidget.channelRadioButton.isChecked():
+            self.iteratorMode = IteratorMode.WithinPreset
+        else:
+            self.iteratorMode = IteratorMode.ByStep
+
+    def periodComboBoxChanged(self):
+        self.frequencyStep = self.stationWidget.periodComboBox.currentText()
+
+    def updateTimer(self):
+        self.timer.stop()
+        self.timer.start(self.stationWidget.delaySpinBox.value() * 1000)
 
     def playStop(self):
         self.timerIsStarted = not self.timerIsStarted
@@ -163,8 +177,11 @@ class MainForm(qtw.QWidget):
         self.updateTimer()
 
     def timerEvent(self):
-        self.nextFrequency()
-        print("Frequency - " + self.frequency)
+        if self.timerIsStarted:
+            self.nextFrequencyGeneral()
+            self.updateUI.emit()
+            print(self.frequency)
+            self.sendDataToSerial()
 
     def updateComport(self):
         self.portlist.clear()
@@ -178,6 +195,17 @@ class MainForm(qtw.QWidget):
         if index > -1:
             self.stationWidget.comPortComboBox.setCurrentIndex(index)
             self.openSerialPort()
+
+    def saveSerialPort(self):
+        configData = {
+            "stationName": self.config["stationName"],
+            "location": self.config["location"],
+            "frequencyRange": self.config["frequencyRange"],
+            "comPort": self.stationWidget.comPortComboBox.currentText(),
+        }
+        jsonString = json.dumps(configData)
+        with open('valkiria_config.json', 'w') as configFile:
+            configFile.write(jsonString)
 
     def openSerialPort(self):
         if self.serial.isOpen():
@@ -214,17 +242,24 @@ class MainForm(qtw.QWidget):
         indexFirst = -1
         rx = self.serial.readAll()
         try:
-            # rxs = str(rx, 'utf-8')
             rxs = str(rx)
-            recieved = getRecievedOfRange(rxs, self.config['frequencyRange'])
+            rxs = rxs.replace("b", "")
+            rxs = rxs.replace("'", "")
             #print(rxs)
-            #print(f'frequency - {recieved['frequency']}; rssi - {recieved['rssi']}')
-            self.stationWidget.rssiLCD.display(recieved['rssi'])
+            self.stationWidget.rxs = self.stationWidget.rxs + rxs
+            verification = verificationDataFromStr(self.stationWidget.rxs)
+            #print(self.stationWidget.rxs)
+            if verification:
+                recieved = getRecievedOfRange(self.stationWidget.rxs, self.config['frequencyRange'])
+                self.stationWidget.rxs = ''
+                #print(rxs)
+                #print(f'frequency - {recieved['frequency']}; rssi - {recieved['rssi']}')
+                self.stationWidget.rssiLCD.display(recieved['rssi'])
+            if len(self.stationWidget.rxs) > 20:
+                self.stationWidget.rxs = ''
         except:
-            indexFirst = -1
-            rxs = ''
-            rxstring = ''
-            #print('rx is uncorrect ')
+            #rxstring = ''
+            print('rx is uncorrect ')
         if self.serial.readBufferSize() > 0:
             self.getDataFromSerial()
 

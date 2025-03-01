@@ -34,7 +34,8 @@ def findPresetByName(presetName, config, presets):
         )
     return found
 
-def findNextFrequencyFromPreset(preset, frequency, direction):
+def _findNextFrequencyFromPreset(preset, frequency, direction):
+    #foundIndex = preset.(frequency)
     foundIndex = preset.index(frequency)
     if foundIndex == -1:
         raise Exception(
@@ -49,6 +50,44 @@ def findNextFrequencyFromPreset(preset, frequency, direction):
     nextFrequency = preset[nextIndex]
 
     return nextFrequency
+
+def findNextFrequencyFromPreset(preset, frequency, direction):
+
+    i = 0
+    frequencyPreset = preset[i]
+    length = len(preset)
+    while i < length:
+        if int(preset[i]) > int(frequency):
+            break
+        i = i + 1
+    foundIndex = i - 1
+    if direction > 0:
+        nextIndex = foundIndex + direction
+    elif int(preset[foundIndex]) == int(frequency):
+        nextIndex = foundIndex + direction
+    else:
+        nextIndex = foundIndex
+    if nextIndex < 0:
+        nextIndex = len(preset) - 1
+    if nextIndex > (len(preset) - 1):
+        nextIndex = 0
+
+    nextFrequency = preset[nextIndex]
+
+    return nextFrequency
+
+def findNextFrequencyByStep(frequency, step, direction, currentPreset):
+    intfrequency = int(frequency)
+    intstep = int(step)
+    nextFrequency = intfrequency + intstep * direction
+    minFrequency = int(currentPreset['minFrequency'])
+    maxFrequency = int(currentPreset['maxFrequency'])
+    if nextFrequency < minFrequency:
+        nextFrequency = maxFrequency
+    if nextFrequency > maxFrequency:
+        nextFrequency = minFrequency
+
+    return str(nextFrequency)
 
 def getRecievedOfRange(recievedStr, range):
     recievedOfRange = dict()
@@ -113,6 +152,16 @@ def getRecievedFromSerial(recievedStr):
     fillrecievedFromAntennas(recievedFromAntennas, recievedStr2)
 
     return recievedFromAntennas
+
+def verificationDataFromStr(strIn):
+    verification = False
+    indexStart = strIn.find('#RSSI ')
+    if indexStart >= 0:
+        indexEnd = strIn.find("\\r\\n")
+        if indexEnd > indexStart:
+            verification = True
+
+    return verification
 
 def fillrecievedFromAntennas(recievedFromAntennas, recievedStrIn):
     if recievedStrIn.find('][') > 0:
