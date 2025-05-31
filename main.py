@@ -12,6 +12,8 @@ from PyQt5 import QtGui as qtg
 from utility import findPresetByName, findNextFrequencyFromPreset, getRecievedFromStr, getRecievedOfRange, \
     verificationDataFromStr, findNextFrequencyByStep
 
+from reader_thread import FileReaderThread
+
 class IteratorMode(QMetaEnum):
     WithinPreset = 'Within Preset'
     ByStep = 'By Step'
